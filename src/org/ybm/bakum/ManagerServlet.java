@@ -3,10 +3,14 @@ package org.ybm.bakum;
 import java.io.BufferedReader;
 import java.io.StringReader;
 import java.net.URLEncoder;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -91,6 +95,8 @@ public class ManagerServlet extends BasicManagerServlet
 		response.sendRedirect(forwardUrl);
 	}
 	
+	static DateFormat dateFormatter = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+	
 	public void addAllFromComm(HttpServletRequest request,
 	    HttpServletResponse response) throws Exception
 	{
@@ -100,9 +106,48 @@ public class ManagerServlet extends BasicManagerServlet
 		{
 			BufferedReader reader = new BufferedReader(new StringReader(comm));
 			String line;
+			List<Dardason> noDates = new ArrayList<Dardason>();
+			// Keep today's date so we have something.
+			String dateStr = dateFormatter.format(new Date());
+			dateStr = dateStr.substring(0, dateStr.indexOf(' '));
 			while ((line = reader.readLine()) != null)
 			{
-				if (line.contains("has completed training")
+				if (line.startsWith("â”€ "))
+				{
+					// Check for date.
+					int endDate = line.indexOf(' ', 4);
+					if (endDate > 0)
+					{
+						try
+						{
+							String tmpDateStr = line.substring(2, endDate);
+							dateFormatter.parse(tmpDateStr + " 00:00");
+							// If succeeded, save it.
+							dateStr = tmpDateStr;
+							
+							if (noDates != null)
+							{
+								// Correct the noDates.
+								for (Dardason d : noDates)
+								{
+									String hour = dateFormatter.format(d.getBirthday());
+									hour = hour.substring(hour.indexOf(' '));
+									String ds = dateStr + hour;
+									Date bd = dateFormatter.parse(ds);
+									bd = new Date(bd.getTime() - TimeUnit.DAYS.toMillis(1));
+									d.setBirthday(bd);
+									dao.create(d);
+								}
+								noDates = null;
+							}
+						}
+						catch (ParseException pe)
+						{
+							pe.printStackTrace();
+						}
+					}
+				}
+				else if (line.contains("has completed training")
 				    || line.contains("created their first Link")
 				    || line.contains("created their first Control Field")
 				    || line.contains("captured their first Portal"))
@@ -123,13 +168,34 @@ public class ManagerServlet extends BasicManagerServlet
 								Dardason d = new Dardason();
 								d.setId(UUID.randomUUID());
 								d.setUsername(username);
-								d.setBirthday(new Date());
-								dao.create(d);
+								// Get hour.
+								String hour = line.substring(0,5);
+								Date bd = null;
+								try
+								{
+									bd = dateFormatter.parse(dateStr + ' ' + hour);
+								}
+								catch (ParseException pe)
+								{
+									bd = dateFormatter.parse(dateStr + " 00:00");
+								}
+								d.setBirthday(bd);
+								if (noDates != null)
+									noDates.add(d);
+								else
+									dao.create(d);
 							}
 						}
 					}
 				}
 			}
+			
+			if (noDates != null)
+			{
+				for (Dardason d : noDates)
+					dao.create(d);
+			}
+
 			reader.close();
 		}
 		
@@ -169,7 +235,7 @@ public class ManagerServlet extends BasicManagerServlet
 			String lines = request.getParameter("lines");
 			if (StringUtils.isEmpty(lines))
 			{
-				lines = "áøåëéí äáàéí ìëåçåú ääúğâãåú! äöèøôå àìéğå ëàï bit.ly/joinTheResistance áâåâì ôìåñ àå çôùå ingress resistance israel áôééñáå÷\nàúí îåæîğéí ìôğåú àìé áëì ùàìä àå òæøä, áèìâøí, äàğâààåè àå ôééñáå÷ reformy@gmail.com";
+				lines = "×‘×¨×•×›×™× ×”×‘××™× ×œ×›×•×—×•×ª ×”×”×ª× ×’×“×•×ª! ×”×¦×˜×¨×¤×• ××œ×™× ×• ×›××Ÿ bit.ly/joinTheResistance ×‘×’×•×’×œ ×¤×œ×•×¡ ××• ×—×¤×©×• ingress resistance israel ×‘×¤×™×™×¡×‘×•×§\n××ª× ××•×–×× ×™× ×œ×¤× ×•×ª ××œ×™ ×‘×›×œ ×©××œ×” ××• ×¢×–×¨×”, ×‘×˜×œ×’×¨×, ×”×× ×’×××•×˜ ××• ×¤×™×™×¡×‘×•×§ reformy@gmail.com";
 			}
 			BufferedReader reader = new BufferedReader(new StringReader(
 			    lines));
