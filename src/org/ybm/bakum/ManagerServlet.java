@@ -8,7 +8,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -107,6 +109,7 @@ public class ManagerServlet extends BasicManagerServlet
 			BufferedReader reader = new BufferedReader(new StringReader(comm));
 			String line;
 			List<Dardason> noDates = new ArrayList<Dardason>();
+			Set<String> noDatesNames = new HashSet<String>();
 			// Keep today's date so we have something.
 			String dateStr = dateFormatter.format(new Date());
 			dateStr = dateStr.substring(0, dateStr.indexOf(' '));
@@ -139,6 +142,7 @@ public class ManagerServlet extends BasicManagerServlet
 									dao.create(d);
 								}
 								noDates = null;
+								noDatesNames = null;
 							}
 						}
 						catch (ParseException pe)
@@ -159,7 +163,7 @@ public class ManagerServlet extends BasicManagerServlet
 						if (endNAme > -1)
 						{
 							String username = line.substring(startName, endNAme);
-							if (dao.getByUsername(username) != null)
+							if (dao.getByUsername(username) != null || noDatesNames.contains(username))
 							{
 								errorMessage += username + " ";
 							}
@@ -181,7 +185,10 @@ public class ManagerServlet extends BasicManagerServlet
 								}
 								d.setBirthday(bd);
 								if (noDates != null)
+								{
 									noDates.add(d);
+									noDatesNames.add(d.getUsername());
+								}
 								else
 									dao.create(d);
 							}
