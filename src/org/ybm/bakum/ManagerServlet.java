@@ -163,7 +163,7 @@ public class ManagerServlet extends BasicManagerServlet
 						if (endNAme > -1)
 						{
 							String username = line.substring(startName, endNAme);
-							if (dao.getByUsername(username) != null || noDatesNames.contains(username))
+							if (dao.getByUsername(username) != null || (noDatesNames != null && noDatesNames.contains(username)))
 							{
 								errorMessage += username + " ";
 							}
